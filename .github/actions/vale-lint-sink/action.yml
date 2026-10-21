@@ -1,0 +1,49 @@
+name: 'vale lint sink (lab reproduction)'
+description: >-
+  Carries the "Determine files to lint" step from
+  elastic/docs-actions vale/lint/action.yml verbatim, including the suppression
+  comment and the E2BIG rationale. Nothing in the step below is altered.
+
+inputs:
+  files:
+    description: 'Space separated list of files to lint'
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+    - name: Determine files to lint
+      id: files-to-lint
+      shell: bash
+      run: | # zizmor: ignore[template-injection]
+        # Intentionally NOT using env: for the files list. When a PR touches hundreds of
+        # files (e.g. generated-docs reorganisations), passing the full space-separated list
+        # as an environment variable causes the Linux kernel to reject the bash process with
+        # E2BIG ("Argument list too long") before a single line runs. Using an inline
+        # GitHub Actions expression instead writes the value into the script file itself,
+        # which has no comparable size limit.
+        INPUT_FILES='${{ inputs.files }}'
+        if [ -n "${INPUT_FILES}" ]; then
+          echo "Using provided files list"
+          printf '%s\n' ${INPUT_FILES} | grep -E '\.(md|mdx|ya?ml)$' > files_to_lint.txt || true
+          if [ -s files_to_lint.txt ]; then
+            echo "has_files=true" >> $GITHUB_OUTPUT
+          else
+            echo "No Markdown, MDX, YAML, or YML files in provided file list"
+            echo "has_files=false" >> $GITHUB_OUTPUT
+          fi
+        fi
+
+    - name: Did anything execute that should not have
+      shell: bash
+      run: |
+        echo "--- marker check, added by the lab, not part of the vendored step ---"
+        if [ -e PWNED ]; then
+          echo "RESULT=EXECUTED  the filename broke out of the quoting and ran a command"
+          echo "marker file:"
+          ls -l PWNED
+          echo "whoami on the runner: $(whoami)"
+        else
+          echo "RESULT=SAFE  no command ran"
+        fi
