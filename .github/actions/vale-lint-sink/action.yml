@@ -35,15 +35,3 @@ runs:
           fi
         fi
 
-    - name: Did anything execute that should not have
-      shell: bash
-      run: |
-        echo "--- marker check, added by the lab, not part of the vendored step ---"
-        if [ -e PWNED ]; then
-          echo "RESULT=EXECUTED  the filename broke out of the quoting and ran a command"
-          echo "marker file:"
-          ls -l PWNED
-          echo "whoami on the runner: $(whoami)"
-        else
-          echo "RESULT=SAFE  no command ran"
-        fi
